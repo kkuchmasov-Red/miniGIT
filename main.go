@@ -13,12 +13,20 @@ const (
 	OBJECTS_REPO = "objects"
 	REFS_REPO    = "refs"
 	HEAD         = "HEAD"
+	BLOB         = "BLOB"
 )
 
+type TreeEntry struct {
+	Path string
+	Hash string
+}
+
+type Tree []slaveTree
+
 type object struct {
-	hash       [20]byte
-	hashString string
-	data       string
+	hash    string
+	data    string
+	typeObj string
 }
 
 func main() {
@@ -30,10 +38,30 @@ func main() {
 			initialization()
 		case "hash":
 			saveObject(params)
+		case "cat":
+			readObject(params)
 		case "test":
 			fmt.Printf("%b\n", 0|1)
 		}
 	}
+}
+
+func readObject(args []string) {
+	if len(args) != 1 {
+		fmt.Println("Неверное количество параметров")
+		return
+	}
+	hash := args[0]
+
+	filePath := MAIN_REPO + "/" + OBJECTS_REPO + "/" + hash
+
+	file, err := os.ReadFile(filePath)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println(string(file))
 }
 
 func saveObject(args []string) {
@@ -56,7 +84,7 @@ func saveObject(args []string) {
 }
 
 func createObject(object object) error {
-	fileName := MAIN_REPO + "/" + OBJECTS_REPO + "/" + object.hashString
+	fileName := MAIN_REPO + "/" + OBJECTS_REPO + "/" + object.hash
 
 	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_EXCL, 0666)
 	if err != nil {
@@ -68,7 +96,7 @@ func createObject(object object) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(object.hashString)
+	fmt.Println(object.hash)
 	return nil
 }
 
@@ -79,9 +107,9 @@ func hash(nameFile string) (object, error) {
 	if err != nil {
 		return object, err
 	}
-	object.hash = sha1.Sum(data)
+	object.hash = fmt.Sprintf("%x", sha1.Sum(data))
 	object.data = string(data)
-	object.hashString = fmt.Sprintf("%x", object.hash)
+	object.typeObj = BLOB
 	return object, nil
 
 }
