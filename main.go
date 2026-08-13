@@ -2,17 +2,87 @@ package main
 
 import (
 	"bufio"
+	"crypto/sha1"
+	"fmt"
 	"os"
 	"strings"
 )
 
-func main() {
-	comandName, _ := parserCommand()
+const (
+	MAIN_REPO    = ".my-git"
+	OBJECTS_REPO = "objects"
+	REFS_REPO    = "refs"
+	HEAD         = "HEAD"
+)
 
-	switch comandName {
-	case "init":
-		initialization()
+type object struct {
+	hash       [20]byte
+	hashString string
+	data       string
+}
+
+func main() {
+
+	for {
+		comandName, params := parserCommand()
+		switch comandName {
+		case "init":
+			initialization()
+		case "hash":
+			saveObject(params)
+		case "test":
+			fmt.Printf("%b\n", 0|1)
+		}
 	}
+}
+
+func saveObject(args []string) {
+	if len(args) != 1 {
+		fmt.Println("Неверное количество параметров")
+		return
+	}
+
+	object, err := hash(args[0])
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = createObject(object)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+}
+
+func createObject(object object) error {
+	fileName := MAIN_REPO + "/" + OBJECTS_REPO + "/" + object.hashString
+
+	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_EXCL, 0666)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = file.Write([]byte(object.data))
+	if err != nil {
+		return err
+	}
+	fmt.Println(object.hashString)
+	return nil
+}
+
+func hash(nameFile string) (object, error) {
+	var object object
+	fullName := "test/" + nameFile
+	data, err := os.ReadFile(fullName)
+	if err != nil {
+		return object, err
+	}
+	object.hash = sha1.Sum(data)
+	object.data = string(data)
+	object.hashString = fmt.Sprintf("%x", object.hash)
+	return object, nil
 
 }
 
@@ -39,12 +109,13 @@ func parserCommand() (string, []string) {
 }
 
 func initialization() {
-	mainRepository := ".my-git"
 
-	os.MkdirAll(mainRepository, 0777)
+	os.MkdirAll(MAIN_REPO, 0777)
 
-	for _, repository := range []string{"objects", "refs", "HEAD"} {
-		os.MkdirAll(mainRepository+"/"+repository, 0777)
+	for _, repository := range []string{OBJECTS_REPO, REFS_REPO} {
+		os.MkdirAll(MAIN_REPO+"/"+repository, 0777)
 	}
+
+	os.Create(MAIN_REPO + "/" + HEAD)
 
 }
