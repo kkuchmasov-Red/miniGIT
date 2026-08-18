@@ -2,8 +2,13 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/sha1"
+	"encoding/binary"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 )
@@ -21,7 +26,7 @@ type TreeEntry struct {
 	Hash string
 }
 
-type Tree []slaveTree
+type Tree []TreeEntry
 
 type object struct {
 	hash    string
@@ -30,6 +35,14 @@ type object struct {
 }
 
 func main() {
+
+	t := newTree()
+	s, _ := json.MarshalIndent(t, "", "\t")
+	fmt.Println(string(s))
+
+	b := t.TreeInByte()
+	fmt.Println(b)
+	t.ByteInTree(b)
 
 	for {
 		comandName, params := parserCommand()
@@ -40,10 +53,71 @@ func main() {
 			saveObject(params)
 		case "cat":
 			readObject(params)
+		case "tree-byte":
+			fmt.Println(t.TreeInByte())
 		case "test":
 			fmt.Printf("%b\n", 0|1)
 		}
 	}
+}
+
+func (t Tree) TreeInByte() []byte {
+	var b bytes.Buffer
+	for _, v := range t {
+		PathByte := []byte(v.Path)
+		lenPath := make([]byte, 2)
+		binary.LittleEndian.PutUint16(lenPath, uint16(len(PathByte)))
+
+		b.Write(lenPath)
+		b.Write(PathByte)
+		dec, err := hex.DecodeString(v.Hash)
+		if err != nil {
+			fmt.Println(err)
+			return []byte{}
+		}
+		b.Write(dec)
+	}
+
+	return b.Bytes()
+}
+
+func (t *Tree) ByteInTree([]byte) Tree {
+
+	io.ReadFull()
+
+}
+
+func newTree() Tree {
+	var t Tree
+
+	dir, err := os.Open("test/")
+	if err != nil {
+		fmt.Println(err)
+		return t
+	}
+	defer dir.Close()
+
+	dirs, err := dir.ReadDir(-1)
+	if err != nil {
+		fmt.Println(err)
+		return t
+	}
+	for _, v := range dirs {
+		obj, err := hash(v.Name())
+		if err != nil {
+			fmt.Println(err)
+			return t
+		}
+
+		filePath := MAIN_REPO + "/" + OBJECTS_REPO + "/" + obj.hash
+		_, err = os.Stat(filePath)
+		if err != nil {
+			fmt.Println(err)
+			return t
+		}
+		t = append(t, TreeEntry{v.Name(), obj.hash})
+	}
+	return t
 }
 
 func readObject(args []string) {
