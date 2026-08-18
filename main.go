@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 )
@@ -81,9 +80,9 @@ func (t Tree) TreeInByte() []byte {
 	return b.Bytes()
 }
 
-func (t *Tree) ByteInTree([]byte) Tree {
+func (t *Tree) ByteInTree([]byte) {
 
-	io.ReadFull()
+	//io.ReadFull()
 
 }
 
